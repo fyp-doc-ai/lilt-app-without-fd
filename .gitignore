@@ -1,0 +1,5 @@
+lilt-env/
+.env
+temp/
+__pycache__/
+models/
