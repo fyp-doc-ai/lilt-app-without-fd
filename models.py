@@ -196,6 +196,8 @@ class LiLTRobertaLikeForRelationExtraction(LiltPreTrainedModel):
         super().__init__(config)
 
         self.lilt = LiltModel(config, add_pooling_layer=False)
+        # self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        # self.extractor = REDecoder(config, config.hidden_size)
         self.rehead = REHead(config)
         self.init_weights()
 
@@ -216,6 +218,8 @@ class LiLTRobertaLikeForRelationExtraction(LiltPreTrainedModel):
         entities=None,
         relations=None,
     ):
+        # for param in self.lilt.parameters():
+        #   param.requires_grad = False
 
         outputs = self.lilt(
             input_ids,
@@ -230,7 +234,8 @@ class LiLTRobertaLikeForRelationExtraction(LiltPreTrainedModel):
             return_dict=return_dict,
         )
 
+        seq_length = input_ids.size(1)
         sequence_output = outputs[0]
-
+        
         re_output = self.rehead(sequence_output, entities, relations)
         return re_output

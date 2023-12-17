@@ -1,6 +1,14 @@
 import torch
 from transformers import AutoTokenizer
 
+def normalize_box(box, width, height):
+    return [
+        int(1000 * (box[0] / width)),
+        int(1000 * (box[1] / height)),
+        int(1000 * (box[2] / width)),
+        int(1000 * (box[3] / height)),
+    ]
+
 # class to turn the keys of a dict into attributes (thanks Stackoverflow)
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
@@ -22,14 +30,6 @@ class Preprocessor():
             x, y, w, h = tuple(row) # the row comes in (left, top, width, height) format
             actual_box = [x, y, x+w, y+h] # we turn it into (left, top, left+widght, top+height) to get the actual box 
             actual_boxes.append(actual_box)
-
-        def normalize_box(box, width, height):
-            return [
-                int(1000 * (box[0] / width)),
-                int(1000 * (box[1] / height)),
-                int(1000 * (box[2] / width)),
-                int(1000 * (box[3] / height)),
-            ]
 
         boxes = []
         for box in actual_boxes:
