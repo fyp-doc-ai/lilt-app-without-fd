@@ -36,9 +36,9 @@ async def ProcessDocument(file: UploadFile):
   reOutput = ExtractRelations(tokenClassificationOutput, ocr_df, img_size)
   return reOutput
 
-@app.post("/submit-doc-mobile")
-async def ProcessDocument(base64str: str = Form(...)):
-  str_as_bytes = str.encode(base64str)
+@app.post("/submit-doc-base64")
+async def ProcessDocument(file: str = Form(...)):
+  str_as_bytes = str.encode(file)
   content = b64decode(str_as_bytes)
   tokenClassificationOutput, ocr_df, img_size = LabelTokens(content)
   reOutput = ExtractRelations(tokenClassificationOutput, ocr_df, img_size)
