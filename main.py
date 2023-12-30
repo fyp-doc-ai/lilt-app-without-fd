@@ -5,11 +5,12 @@ from PIL import Image
 from transformers import LiltForTokenClassification, AutoTokenizer
 import token_classification
 import torch
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, Form
 from contextlib import asynccontextmanager
 import json
 import io
 from models import LiLTRobertaLikeForRelationExtraction
+from base64 import b64decode 
 config = {}
 
 @asynccontextmanager
@@ -30,12 +31,20 @@ app = FastAPI(lifespan=lifespan)
 
 @app.post("/submit-doc")
 async def ProcessDocument(file: UploadFile):
-  tokenClassificationOutput, ocr_df, img_size = await LabelTokens(file)
+  content = await file.read()
+  tokenClassificationOutput, ocr_df, img_size = LabelTokens(content)
   reOutput = ExtractRelations(tokenClassificationOutput, ocr_df, img_size)
   return reOutput
 
-async def LabelTokens(file):
-  content = await file.read()
+@app.post("/submit-doc-mobile")
+async def ProcessDocument(base64str: str = Form(...)):
+  str_as_bytes = str.encode(base64str)
+  content = b64decode(str_as_bytes)
+  tokenClassificationOutput, ocr_df, img_size = LabelTokens(content)
+  reOutput = ExtractRelations(tokenClassificationOutput, ocr_df, img_size)
+  return reOutput
+
+def LabelTokens(content):
   image = Image.open(io.BytesIO(content))
   ocr_df = config['vision_client'].ocr(content, image)
   input_ids, attention_mask, token_type_ids, bbox, token_actual_boxes, offset_mapping = config['processor'].process(ocr_df, image = image)
@@ -74,14 +83,5 @@ def ExtractRelations(tokenClassificationOutput, ocr_df, img_size):
     question =  config['tokenizer'].decode(input_ids[0][head_start:head_end])
     answer = config['tokenizer'].decode(input_ids[0][tail_start:tail_end])
     decoded_pred_relations.append((question, answer))
-    # print("Question:", question)
-    # print("Answer:", answer)
-    ## This prints bboxes of each question and answer
-    # for item in merged_words:
-    #     if item['text'] == question:
-    #       print('Question', item['box'])
-    #     if item['text'] == answer:
-    #       print('Answer', item['box'])
-    # print("----------")
 
   return {"pred_relations":json.dumps(outputs.pred_relations[0]), "entities":json.dumps(entities), "input_ids": json.dumps(input_ids.tolist()), "bboxes": json.dumps(bbox_org.tolist()),"token_labels":json.dumps(token_labels), "decoded_entities": json.dumps(decoded_entities), "decoded_pred_relations":json.dumps(decoded_pred_relations)}
