@@ -38,6 +38,7 @@ async def ProcessDocument(file: UploadFile):
 
 @app.post("/submit-doc-base64")
 async def ProcessDocument(file: str = Form(...)):
+  head, file = file.split(',')
   str_as_bytes = str.encode(file)
   content = b64decode(str_as_bytes)
   tokenClassificationOutput, ocr_df, img_size = LabelTokens(content)
@@ -46,6 +47,7 @@ async def ProcessDocument(file: str = Form(...)):
 
 def LabelTokens(content):
   image = Image.open(io.BytesIO(content))
+  image.show()
   ocr_df = config['vision_client'].ocr(content, image)
   input_ids, attention_mask, token_type_ids, bbox, token_actual_boxes, offset_mapping = config['processor'].process(ocr_df, image = image)
   token_labels = token_classification.classifyTokens(config['ser_model'], input_ids, attention_mask, bbox, offset_mapping)
