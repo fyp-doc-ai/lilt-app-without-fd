@@ -47,7 +47,6 @@ async def ProcessDocument(file: str = Form(...)):
 
 def LabelTokens(content):
   image = Image.open(io.BytesIO(content))
-  image.show()
   ocr_df = config['vision_client'].ocr(content, image)
   input_ids, attention_mask, token_type_ids, bbox, token_actual_boxes, offset_mapping = config['processor'].process(ocr_df, image = image)
   token_labels = token_classification.classifyTokens(config['ser_model'], input_ids, attention_mask, bbox, offset_mapping)
