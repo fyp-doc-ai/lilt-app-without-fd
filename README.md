@@ -1,7 +1,6 @@
-1. Create a virtualenv
-	`virtualenv lilt-env`
-2. Install packages
-	`pip install -r requirements.txt`
-3. Dowload the models by running `dowload_model.ipynb` notebook
-3. Run the app
-	`uvicorn main:app --reload`
+title: Sri-Doc-API
+emoji: 🐳
+colorFrom: purple
+colorTo: gray
+sdk: docker
+app_port: 7860
