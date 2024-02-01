@@ -5,7 +5,7 @@ from PIL import Image
 from transformers import LiltForTokenClassification, AutoTokenizer
 import token_classification
 import torch
-from fastapi import FastAPI, UploadFile, Form
+from fastapi import FastAPI, UploadFile, Form, HTTPException
 from contextlib import asynccontextmanager
 import json
 import io
@@ -32,25 +32,49 @@ app = FastAPI(lifespan=lifespan)
 @app.post("/submit-doc")
 async def ProcessDocument(file: UploadFile):
   content = await file.read()
-  tokenClassificationOutput, ocr_df, img_size = LabelTokens(content)
-  reOutput = ExtractRelations(tokenClassificationOutput, ocr_df, img_size)
+  ocr_df, image = ApplyOCR(content)
+  if len(ocr_df) < 2:
+    raise HTTPException(status_code=400, detail="Cannot apply OCR to the image")
+  try:
+    tokenClassificationOutput, img_size = LabelTokens(ocr_df, image)
+    reOutput = ExtractRelations(tokenClassificationOutput, ocr_df, img_size)
+  except:
+    raise HTTPException(status_code=400, detail="Invalid Image")
   return reOutput
 
 @app.post("/submit-doc-base64")
 async def ProcessDocument(file: str = Form(...)):
-  head, file = file.split(',')
-  str_as_bytes = str.encode(file)
-  content = b64decode(str_as_bytes)
-  tokenClassificationOutput, ocr_df, img_size = LabelTokens(content)
-  reOutput = ExtractRelations(tokenClassificationOutput, ocr_df, img_size)
+  try:
+    head, file = file.split(',')
+    str_as_bytes = str.encode(file)
+    content = b64decode(str_as_bytes)
+  except:
+    raise HTTPException(status_code=400, detail="Invalid image")
+  ocr_df, image = ApplyOCR(content)
+  if len(ocr_df) < 2:
+    raise HTTPException(status_code=400, detail="Cannot apply OCR to the image")
+  try:
+    tokenClassificationOutput, img_size = LabelTokens(ocr_df, image)
+    reOutput = ExtractRelations(tokenClassificationOutput, ocr_df, img_size)
+  except:
+    raise HTTPException(status_code=400, detail="Invalid Image")
   return reOutput
 
-def LabelTokens(content):
-  image = Image.open(io.BytesIO(content))
-  ocr_df = config['vision_client'].ocr(content, image)
+def ApplyOCR(content):
+  try:
+    image = Image.open(io.BytesIO(content))
+  except:
+    raise HTTPException(status_code=400, detail="Invalid image")
+  try:
+    ocr_df = config['vision_client'].ocr(content, image)
+  except:
+    raise HTTPException(status_code=400, detail="OCR process failed")
+  return ocr_df, image
+
+def LabelTokens(ocr_df, image):
   input_ids, attention_mask, token_type_ids, bbox, token_actual_boxes, offset_mapping = config['processor'].process(ocr_df, image = image)
   token_labels = token_classification.classifyTokens(config['ser_model'], input_ids, attention_mask, bbox, offset_mapping)
-  return {"token_labels": token_labels, "input_ids": input_ids, "bbox":bbox, "attention_mask":attention_mask}, ocr_df, image.size
+  return {"token_labels": token_labels, "input_ids": input_ids, "bbox":bbox, "attention_mask":attention_mask}, image.size
 
 def ExtractRelations(tokenClassificationOutput, ocr_df, img_size):
   token_labels = tokenClassificationOutput['token_labels']
