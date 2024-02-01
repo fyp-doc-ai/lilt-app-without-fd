@@ -29,6 +29,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+@app.get("/")
+def api_home():
+    return {'detail': 'Welcome to Sri-Doc space'}
+
 @app.post("/submit-doc")
 async def ProcessDocument(file: UploadFile):
   content = await file.read()
