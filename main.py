@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
     settings = Settings()
     config['settings'] = settings
     config['device'] = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    config['vision_client'] = ocr.VisionClient(settings.GCV_AUTH)
+    
     config['processor'] = Preprocessor(settings.TOKENIZER)
     config['tokenizer'] = AutoTokenizer.from_pretrained(settings.TOKENIZER)
     config['ser_model'] = LiltForTokenClassification.from_pretrained(settings.SER_MODEL)
@@ -70,7 +70,8 @@ def ApplyOCR(content):
   except:
     raise HTTPException(status_code=400, detail="Invalid image")
   try:
-    ocr_df = config['vision_client'].ocr(content, image)
+    vision_client = ocr.VisionClient(config['settings'].GCV_AUTH)
+    ocr_df = vision_client.ocr(content, image)
   except:
     raise HTTPException(status_code=400, detail="OCR process failed")
   return ocr_df, image
